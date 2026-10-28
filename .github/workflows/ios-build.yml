@@ -1,0 +1,52 @@
+name: iOS build and protocol tests
+on:
+  push:
+    paths: ['ios/**', '.github/workflows/ios-build.yml']
+  pull_request:
+    paths: ['ios/**', '.github/workflows/ios-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+          swift --version
+      - name: Verify generated project
+        run: |
+          python3 ios/scripts/generate_project.py
+          git diff --exit-code -- ios/MagerCam.xcodeproj
+          plutil -lint ios/Resources/Info.plist ios/MagerCam.xcodeproj/project.pbxproj
+      - name: Test MC framing and Annex B conversion
+        run: swift test --package-path ios
+      - name: Build simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/MagerCam.xcodeproj -scheme MagerCam -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO build | tee simulator-build.log
+      - name: Compile for iPhone
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/MagerCam.xcodeproj -scheme MagerCam -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO build | tee device-build.log
+      - name: Upload unsigned build and logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: MagerCam-iOS-unsigned-${{ github.sha }}
+          path: |
+            build/simulator/Build/Products/Debug-iphonesimulator/MagerCam.app
+            build/device/Build/Products/Release-iphoneos/MagerCam.app
+            *-build.log
+          retention-days: 14
