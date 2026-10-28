@@ -6,8 +6,22 @@
 ## Текущая готовность
 
 Реализованы исходники приложения, обычный Xcode-проект, проверки протокола и workflows сборки/подписи.
-**На Windows проверены структура проекта, plist/scheme, генератор проекта и инструмент проверки потока. Компиляция Swift/Xcode, установка на iPhone и реальная картинка в OBS пока не проверены.**
-Для объявления версии рабочей нужно пройти macOS CI и физическую проверку ниже. В этой рабочей папке нет Git checkout/remote, поэтому workflows ещё не запускались.
+**macOS CI пройден:** 4 теста протокола без ошибок, Debug для симулятора и Release для iPhone успешно собраны в Xcode 26.6 / Swift 6.3.3. [Первый успешный прогон](https://github.com/pima33/port_test/actions/runs/40748688081), исходники `18b5066`.
+На Windows также проверены структура проекта, plist/scheme, генератор проекта и инструмент проверки потока.
+**Установка на настоящий iPhone, работа камеры и изображение в OBS ещё не проверены.** Для практической приёмки выполните установку и проверки ниже.
+
+## Установка с Windows без Mac и платного Apple Developer
+
+Для этого варианта нужен обычный Apple ID, iPhone с iOS 17+ и USB-кабель. [Sideloadly](https://sideloadly.io/) поддерживает подпись IPA бесплатным Apple ID на Windows. Mac и платная подписка для этого способа не требуются.
+
+1. В [GitHub Actions](https://github.com/pima33/port_test/actions/workflows/ios-build.yml) откройте последний успешный запуск и скачайте артефакт **MagerCam-iOS-IPA-…**. Распакуйте ZIP: внутри `MagerCam-unsigned.ipa`, контрольная сумма и сведения о сборке. Для скачивания артефактов войдите в GitHub.
+2. Установите Sideloadly с официального сайта и компоненты Apple, указанные там в разделе **Before you install**. Подключите разблокированный iPhone кабелем и подтвердите доверие к компьютеру.
+3. Откройте IPA в Sideloadly, выберите iPhone, введите свой Apple ID и запустите установку. Пароль и подтверждение Apple вводите самостоятельно в инструменте установки, а не в чате или GitHub.
+4. На iPhone подтвердите доверие профилю в **Настройки → Основные → VPN и управление устройством**. Включите **Настройки → Конфиденциальность и безопасность → Режим разработчика**, завершите предложенную перезагрузку и подтверждение. [Инструкция Sideloadly](https://sideloadly.io/faq.html).
+5. Откройте MagerCam и перейдите к подключению OBS ниже. Разрешите доступ к камере и локальной сети, если iOS запросит его.
+
+IPA из CI не подписана: её нужно подписать при установке через Sideloadly; открытие файла в приложении «Файлы» не установит приложение. Эту установку на физическом устройстве ещё предстоит проверить.
+С бесплатным Apple ID подпись действует **7 дней**; затем обновите её в Sideloadly или настройте его auto-refresh. Лимит — 3 приложения, подписанных бесплатным аккаунтом, на устройстве. [Ограничения и обновление подписи](https://sideloadly.io/faq.html).
 
 ## Что входит в MVP
 
@@ -58,9 +72,9 @@ python3 ios/scripts/generate_project.py
 
 ### GitHub Actions без локального Mac
 
-Поместите ios/ и .github/workflows/ в ваш GitHub-репозиторий. Workflow **iOS build and protocol tests** запускает Swift tests, simulator build и unsigned device build на macos-26. Артефакт unsigned .app **не устанавливается на обычный iPhone**.
+В [pima33/port_test](https://github.com/pima33/port_test) workflow **iOS build and protocol tests** запускает Swift tests, simulator build и unsigned device build на macos-26. Он также упаковывает device build в **MagerCam-unsigned.ipa** для подписи на Windows, проверяет структуру IPA и arm64 executable и сохраняет SHA-256. Артефакты доступны 14 дней; затем workflow можно запустить заново. Не устанавливайте simulator .app на телефон.
 
-Для IPA используйте ручной workflow **iOS signed IPA** и environment **ios-signing** (рекомендуется ограничить разрешённые ветки и добавить reviewer). Перед запуском в Apple Developer должны существовать App ID, Apple Distribution certificate с private key и подходящий provisioning profile. Введите:
+Для подписанной в CI IPA через **платный Apple Developer Account** используйте ручной workflow **iOS signed IPA** и environment **ios-signing** (рекомендуется ограничить разрешённые ветки и добавить reviewer). Это отдельный вариант для Ad Hoc/TestFlight; для установки через Sideloadly он не нужен. Workflow подписи ещё не запускался. Перед его запуском в Apple Developer должны существовать App ID, Apple Distribution certificate с private key и подходящий provisioning profile. Введите:
 
 | Secret | Содержимое |
 |---|---|

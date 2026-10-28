@@ -40,6 +40,39 @@ jobs:
           xcodebuild -project ios/MagerCam.xcodeproj -scheme MagerCam -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' \
             -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO build | tee device-build.log
+      - name: Package IPA for signing on Windows
+        run: |
+          set -euo pipefail
+          mkdir -p build/sideload/Payload
+          ditto build/device/Build/Products/Release-iphoneos/MagerCam.app build/sideload/Payload/MagerCam.app
+          cd build/sideload
+          ditto -c -k --norsrc --keepParent Payload MagerCam-unsigned.ipa
+          python3 - <<'PY'
+          import plistlib, struct, zipfile
+          with zipfile.ZipFile('MagerCam-unsigned.ipa') as ipa:
+              assert ipa.testzip() is None, 'Corrupt IPA archive'
+              app = 'Payload/MagerCam.app/'
+              info = plistlib.loads(ipa.read(app + 'Info.plist'))
+              assert info['CFBundleSupportedPlatforms'] == ['iPhoneOS'], 'Expected device app, not simulator'
+              assert info['MinimumOSVersion'] == '17.0'
+              executable = app + info['CFBundleExecutable']
+              assert struct.unpack('<II', ipa.read(executable)[:8]) == (0xfeedfacf, 0x0100000c), 'Expected arm64 Mach-O'
+              assert (ipa.getinfo(executable).external_attr >> 16) & 0o111, 'Missing executable permission'
+              print('IPA verified: iPhoneOS arm64, iOS 17+, executable and archive intact')
+          PY
+          shasum -a 256 MagerCam-unsigned.ipa > SHA256.txt
+          printf 'Source: %s\nUnsigned IPA: sign with your own Apple ID before installation.\n' "$GITHUB_SHA" > BUILD.txt
+          xcodebuild -version >> BUILD.txt
+      - name: Upload IPA for Windows sideloading
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: MagerCam-iOS-IPA-${{ github.sha }}
+          path: |
+            build/sideload/MagerCam-unsigned.ipa
+            build/sideload/SHA256.txt
+            build/sideload/BUILD.txt
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload unsigned build and logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
