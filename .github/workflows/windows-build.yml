@@ -1,0 +1,49 @@
+name: Windows camera client
+on:
+  push:
+    paths: ['windows/**', '.github/workflows/windows-build.yml']
+  pull_request:
+    paths: ['windows/**', '.github/workflows/windows-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: '10.0.403'
+      - name: Restore locked dependencies
+        run: |
+          dotnet restore windows/MagerCam.Windows --locked-mode
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet restore windows/MagerCam.Tests --locked-mode
+      - name: Test protocol, TCP and real H264 decoding
+        run: dotnet run --project windows/MagerCam.Tests -c Release --no-restore
+      - name: Publish portable x64 application
+        run: dotnet publish windows/MagerCam.Windows -c Release -r win-x64 --self-contained true --no-restore -o build/windows/MagerCam-Windows-x64
+      - name: Package
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $folder = 'build/windows/MagerCam-Windows-x64'
+          @('MagerCam.Windows.exe', 'libvlc/win-x64/libvlc.dll', 'coreclr.dll', 'licenses/LibVLCSharp-LICENSE.txt') | ForEach-Object {
+            if (-not (Test-Path (Join-Path $folder $_))) { throw "Missing package file: $_" }
+          }
+          "Source: $env:GITHUB_SHA" | Set-Content "$folder/BUILD.txt"
+          Compress-Archive -Path $folder -DestinationPath build/windows/MagerCam-Windows-x64.zip
+          (Get-FileHash build/windows/MagerCam-Windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant() | Set-Content build/windows/SHA256.txt
+      - name: Upload Windows application
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: MagerCam-Windows-x64-${{ github.sha }}
+          path: |
+            build/windows/MagerCam-Windows-x64.zip
+            build/windows/SHA256.txt
+          if-no-files-found: error
+          retention-days: 14

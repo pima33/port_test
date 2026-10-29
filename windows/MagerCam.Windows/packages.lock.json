@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "LibVLCSharp.WinForms": {
+        "type": "Direct",
+        "requested": "[3.10.2, )",
+        "resolved": "3.10.2",
+        "contentHash": "e7rdN8YbEOoklzcBtm/fCe89DevUaD2sgOeNXQ1BlZvY/Reh3egL+tEDi3f6IfyPMbvtfODW9Zj0e7vBcooLeg==",
+        "dependencies": {
+          "LibVLCSharp": "3.10.2"
+        }
+      },
+      "VideoLAN.LibVLC.Windows": {
+        "type": "Direct",
+        "requested": "[3.0.24, )",
+        "resolved": "3.0.24",
+        "contentHash": "U8SHuJr8eAC3x4+gEtOJD2heReo0tTWP3v21NunYNTzjmHpVp7qELs8phohqazxHMkaSIN8LufdIpAhldiLL/A=="
+      },
+      "LibVLCSharp": {
+        "type": "Transitive",
+        "resolved": "3.10.2",
+        "contentHash": "WNLHBIK5QcOH0kNGBGupKC9Ds3hksPthHyp6ueE8zG5Hy/6EBwAU0BbMqukBCdLatCOY+V9DYHDwSVSXSmPGSA=="
+      },
+      "magercam.core": {
+        "type": "Project"
+      }
+    },
+    "net10.0-windows7.0/win-x64": {}
+  }
+}
